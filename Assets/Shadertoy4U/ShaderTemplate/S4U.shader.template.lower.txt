@@ -1,0 +1,8 @@
+
+            #include "Shadertoy4U/ShaderLibrary/S4UUnlit.hlsl"
+            #pragma vertex S4UUnlitVertex
+            #pragma fragment S4UUnlitFragment
+            ENDHLSL
+        }
+    }
+}

@@ -1,0 +1,8 @@
+Shader "S4U/Unlit"
+{
+    SubShader
+    {
+        Pass
+        {
+            HLSLPROGRAM
+            #include "Shadertoy4U/ShaderLibrary/S4UInput.hlsl"
