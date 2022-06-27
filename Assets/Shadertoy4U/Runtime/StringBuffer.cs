@@ -15,7 +15,7 @@ public class StringBuffer
         currentPosition = 0;
     }
 
-    public char NextChar()
+    public char Next()
     {
         if (currentPosition < mStr.Length)
         {

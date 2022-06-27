@@ -17,10 +17,10 @@ public class Lexer
 
     public Token token { get => currentToken; }
 
-    public Lexer(StringBuffer buf, char firstChar)
+    public Lexer(StringBuffer buf)
     {
         mInput = buf;
-        currentChar = firstChar;
+        currentChar = mInput.Next();
     }
 
     public void NextToken()
@@ -39,45 +39,80 @@ public class Lexer
 
     Token NewToken()
     {
-        stringBuilder.Clear();
+        Reset();
 
         var token = new Token();
+
+        int count = 0;
         while(true)
         {
+            if (count++ > 100)
+            {
+                token.type = Token.Type.EOS;
+                return token;
+            }
+            
             switch(currentChar)
             {
-            case '\n':
-            case '\r':
+            case '\n': case '\r':
                 /* line breaks */
                 IncreaseLine();
                 break;
-            case ' ':
-            case '\f':
-            case '\t':
-            case '\v':
+            case ' ': case '\f': case '\t': case '\v':
                 /* spaces */
                 Next();
                 break;
-            case StringBuffer.eos:
-                token.type = TokenType.EOS;
-                return token;
-            default:
-                if (IsAlpha())
+            case '/':
+                /* comment or operator symbols */
+                Next();
+                if (currentChar == '=')
                 {
-                    /* identifier or reserved word? */
+                    Next();
+
+                    token.type = Token.Type.DIV_ASSIGN;
+                    return token;
+                }
+                else if (currentChar == '/')
+                {
+                    Next();
                     do
                     {
                         SaveAndNext();
-                    } while (IsAlphaNum());
-                    //currentToken.semInfo.ts = tokenBuffer;
+                    } while (!StringUtil.IsNewLine(currentChar) && currentChar != StringBuffer.eos);
                     token.str = stringBuilder.ToString();
+                    token.type = Token.Type.COMMENT;
+                    return token;
+                }
+                else if (currentChar == '*')
+                {
+                    token.type = Token.Type.EOS;
                     return token;
                 }
                 else
                 {
-                    /* single-char tokens ('+', '*', '%', '{', '}', ...) */
+                    token.type = Token.Type.SLASH;
+                    return token;
                 }
-                break;
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                ReadNumber(token);
+                return token;
+            case StringBuffer.eos:
+                token.type = Token.Type.EOS;
+                return token;
+            default:
+                if (StringUtil.IsAlpha(currentChar))
+                {
+                    /* identifier or reserved word? */
+                    ReadName(token);
+                    return token;
+                }
+                else
+                {
+                    /* operator tokens ('+', '*', '%', '{', '}', ...) */
+                    ReadOperator(token);
+                    return token;
+                }
             }
         }
     }
@@ -86,7 +121,7 @@ public class Lexer
     {
         var old = currentChar;
         Next();
-        if (CurrentIsNewLine() && currentChar != old)
+        if (StringUtil.IsNewLine(currentChar) && currentChar != old)
             Next();
     }
 
@@ -101,29 +136,44 @@ public class Lexer
         stringBuilder.Append(currentChar);
     }
 
+    void Reset()
+    {
+        stringBuilder.Clear();
+    }
+
     void Next()
     {
-        currentChar = mInput.NextChar();
+        currentChar = mInput.Next();
     }
 
-    bool CurrentIsNewLine()
+    void ReadName(Token token)
     {
-        return currentChar == '\n' ||  currentChar == '\r';
+        do
+        {
+            SaveAndNext();
+        } while (StringUtil.IsAlphaNum(currentChar));
+        token.str = stringBuilder.ToString();
+        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.NAME;
     }
 
-    bool IsAlpha()
+    void ReadNumber(Token token)
     {
-        return char.IsLetter(currentChar) || currentChar == '_';
+        do
+        {
+            SaveAndNext();
+        } while (StringUtil.IsDigit(currentChar) || currentChar == '.');
+        token.str = stringBuilder.ToString();
+        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.NUMBER;
     }
 
-    bool IsAlphaNum()
+    void ReadOperator(Token token)
     {
-        return char.IsLetterOrDigit(currentChar);
-    }
-
-    bool IsDigit()
-    {
-        return char.IsDigit(currentChar);
+        do
+        {
+            SaveAndNext();
+        } while (StringUtil.IsSymbol(currentChar));
+        token.str = stringBuilder.ToString();
+        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.EOS;
     }
 
 }

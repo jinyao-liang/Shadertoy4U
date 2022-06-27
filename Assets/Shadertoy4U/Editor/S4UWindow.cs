@@ -20,6 +20,12 @@ public class S4UWindow : EditorWindow
 
     void OnGUI () 
     {
+        if(GUILayout.Button("Test"))
+        {
+            Glsl2Hlsl.Convert(content);
+        }
+        EditorGUILayout.Space();EditorGUILayout.Space();EditorGUILayout.Space();
+
         upperText = EditorGUILayout.ObjectField("upperText", upperText, typeof(TextAsset), false) as TextAsset;
         lowerText = EditorGUILayout.ObjectField("lowerText", lowerText, typeof(TextAsset), false) as TextAsset;
 

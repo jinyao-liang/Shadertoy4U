@@ -10,9 +10,16 @@ public static class Glsl2Hlsl
     public static string Convert(string glsl)
     {
         var buf = new StringBuffer(glsl);
-        var firstChar = buf.NextChar();
-        var lexer = new Lexer(buf, firstChar);
-        lexer.NextToken();
+        var lexer = new Lexer(buf);
+
+        while(true)
+        {
+            lexer.NextToken();
+            if (!lexer.token.valid)
+                break;
+            Debug.Log($"{lexer.token.type}: {lexer.token.str}");
+        }
+        Debug.Log($"done.");
 
         Parser parser = new Parser(lexer);
         parser.Parse();
