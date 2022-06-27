@@ -38,6 +38,7 @@ public class S4UWindow : EditorWindow
 {hlsl}
 {lowerText.text}
 ";
+            str = str.Replace("\r\n", "\n");
 
             File.WriteAllText(AssetDatabase.GetAssetPath(shader), str);
             AssetDatabase.Refresh();
