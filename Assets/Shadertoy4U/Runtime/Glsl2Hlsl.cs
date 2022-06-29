@@ -11,18 +11,20 @@ public static class Glsl2Hlsl
     {
         var buf = new StringBuffer(glsl);
         var lexer = new Lexer(buf);
+        lexer.NextToken();
 
-        while(true)
-        {
-            lexer.NextToken();
-            if (!lexer.token.valid)
-                break;
-            Debug.Log($"{lexer.token.type}: {lexer.token.str}");
-        }
-        Debug.Log($"done.");
+        // while(true)
+        // {
+        //     lexer.NextToken();
+        //     if (!lexer.token.valid)
+        //         break;
+        //     Debug.Log($"{lexer.token.type}: {lexer.token.str}");
+        // }
+        // Debug.Log($"done.");
 
         Parser parser = new Parser(lexer);
         parser.Parse();
+        Debug.Log($"done.");
 
         return glsl;
     }

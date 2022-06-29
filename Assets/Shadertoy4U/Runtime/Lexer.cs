@@ -1,4 +1,5 @@
 using System.Text;
+using UnityEngine;
 
 namespace Shadertoy4U
 {
@@ -20,7 +21,22 @@ public class Lexer
     public Lexer(StringBuffer buf)
     {
         mInput = buf;
-        currentChar = mInput.Next();
+        Next();
+    }
+
+    public void Mark()
+    {
+        Debug.Log("Mark");
+    }
+
+    public void ClearMark()
+    {
+        Debug.Log("ClearMark");
+    }
+
+    public void Restore()
+    {
+        Debug.Log("Restore");
     }
 
     public void NextToken()
@@ -64,17 +80,17 @@ public class Lexer
                 break;
             case '/':
                 /* comment or operator symbols */
-                Next();
+                SaveAndNext();
                 if (currentChar == '=')
                 {
-                    Next();
-
+                    SaveAndNext();
+                    token.str = stringBuilder.ToString();
                     token.type = Token.Type.DIV_ASSIGN;
                     return token;
                 }
                 else if (currentChar == '/')
                 {
-                    Next();
+                    SaveAndNext();
                     do
                     {
                         SaveAndNext();
@@ -90,6 +106,7 @@ public class Lexer
                 }
                 else
                 {
+                    token.str = stringBuilder.ToString();
                     token.type = Token.Type.SLASH;
                     return token;
                 }
@@ -136,14 +153,14 @@ public class Lexer
         stringBuilder.Append(currentChar);
     }
 
-    void Reset()
-    {
-        stringBuilder.Clear();
-    }
-
     void Next()
     {
         currentChar = mInput.Next();
+    }
+
+    void Reset()
+    {
+        stringBuilder.Clear();
     }
 
     void ReadName(Token token)
@@ -153,7 +170,7 @@ public class Lexer
             SaveAndNext();
         } while (StringUtil.IsAlphaNum(currentChar));
         token.str = stringBuilder.ToString();
-        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.NAME;
+        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.IDENTIFIER;
     }
 
     void ReadNumber(Token token)
@@ -163,7 +180,7 @@ public class Lexer
             SaveAndNext();
         } while (StringUtil.IsDigit(currentChar) || currentChar == '.');
         token.str = stringBuilder.ToString();
-        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.NUMBER;
+        token.type = Token.TryGetType(token.str, out var t) ? t : Token.Type.FLOATCONSTANT;
     }
 
     void ReadOperator(Token token)

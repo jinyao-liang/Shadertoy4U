@@ -20,12 +20,6 @@ public class S4UWindow : EditorWindow
 
     void OnGUI () 
     {
-        if(GUILayout.Button("Test"))
-        {
-            Glsl2Hlsl.Convert(content);
-        }
-        EditorGUILayout.Space();EditorGUILayout.Space();EditorGUILayout.Space();
-
         upperText = EditorGUILayout.ObjectField("upperText", upperText, typeof(TextAsset), false) as TextAsset;
         lowerText = EditorGUILayout.ObjectField("lowerText", lowerText, typeof(TextAsset), false) as TextAsset;
 
@@ -46,8 +40,8 @@ public class S4UWindow : EditorWindow
 ";
             str = str.Replace("\r\n", "\n");
 
-            File.WriteAllText(AssetDatabase.GetAssetPath(shader), str);
-            AssetDatabase.Refresh();
+            //File.WriteAllText(AssetDatabase.GetAssetPath(shader), str);
+            //AssetDatabase.Refresh();
         }
     }
 }
