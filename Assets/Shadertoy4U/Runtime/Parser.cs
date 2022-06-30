@@ -15,6 +15,8 @@ public class Parser
 
     string mLastError;
 
+    public Token token { get => mLexer.token; }
+
     public Parser(Lexer lexer)
     {
         mLexer = lexer;
