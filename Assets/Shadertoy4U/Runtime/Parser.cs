@@ -9,6 +9,7 @@ public class Parser
 {
     public class State
     {
+        public Lexer.State lexState;
     }
 
     Lexer mLexer;
@@ -24,10 +25,11 @@ public class Parser
 
     public void Parse()
     {
+        GrammarNode.depth = 32;
         var branch = new function_prototype();
         if (!branch.Execute(this))
         {
-            Debug.LogError(mLastError);
+            // Debug.LogError(mLastError);
         }
     }
 
@@ -45,12 +47,15 @@ public class Parser
 
     public State Backup()
     {
-        return null;
+        return new State {
+            lexState = mLexer.Backup(),
+        };
     }
 
     public void Restore(State s)
     {
-        //Debug.LogWarning("Restore");
+        Debug.LogWarning($"Restore");
+        mLexer.Restore(s.lexState);
     }
 
     public void LogError(string str)

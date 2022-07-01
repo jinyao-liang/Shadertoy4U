@@ -6,6 +6,13 @@ namespace Shadertoy4U
 
 public class Lexer
 {
+    public class State
+    {
+        public Token t;
+        public char c;
+        public int p;
+    }
+
     StringBuffer mInput;
 
     StringBuilder stringBuilder = new StringBuilder();
@@ -24,19 +31,21 @@ public class Lexer
         Next();
     }
 
-    public void Mark()
+    public State Backup()
     {
-        Debug.Log("Mark");
+        return new State
+        {
+            t = currentToken,
+            c = currentChar,
+            p = mInput.pos,
+        };
     }
 
-    public void ClearMark()
+    public void Restore(State s)
     {
-        Debug.Log("ClearMark");
-    }
-
-    public void Restore()
-    {
-        Debug.Log("Restore");
+        currentToken = s.t;
+        currentChar = s.c;
+        mInput.pos = s.p;
     }
 
     public void NextToken()

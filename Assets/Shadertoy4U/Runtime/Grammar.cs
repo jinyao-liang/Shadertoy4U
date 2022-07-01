@@ -4,70 +4,79 @@ using UnityEngine;
 namespace Shadertoy4U
 {
 
-public abstract class Branch
+public abstract class GrammarNode
 {
-    private Branch next;
+    GrammarNode mNext;
 
-    private static int depth = 0;
+    public virtual string name => GetType().Name;
 
-    protected virtual bool ExecuteSelf(Parser parser)
-    {
-        return true;
-    }
+    protected virtual bool ExecuteSelf(Parser parser) => true;
+    protected virtual GrammarNode[][] GenerateSubsequence() => null;
 
-    protected virtual Branch[][] GenerateSubsequence()
-    {
-        return null;
-    }
-
+    public static int depth = 0;
     public bool Execute(Parser parser)
     {
-        Debug.Log($"Executing {ToString()} at {depth}");
-        if (depth++ > 16)
+        Debug.Log($"[{depth}]Executing {name}, current token: {parser.token.ToString()}");
+        if (depth-- <= 0)
             return false;
 
         if (!ExecuteSelf(parser))
             return false;
 
         var seqs = GenerateSubsequence();
-        if (seqs != null)
+        if (seqs == null)
+            return ExecuteSequence(parser, null);
+
+        var state = parser.Backup();
+        for (var i = 0; i < seqs.Length; i++)
         {
-            var state = parser.Backup();
-            foreach (var seq in seqs)
-            {
+            if (i > 0)
                 parser.Restore(state);
-                ExecuteSequence(parser, seq);
+
+            if (ExecuteSequence(parser, seqs[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool ExecuteSequence(Parser parser, GrammarNode[] branches)
+    {
+        var newNext = mNext;
+        if (branches != null)
+        {
+            for(var i = branches.Length - 1; i >= 0; i--)
+            {
+                branches[i].mNext = newNext;
+                newNext = branches[i];
             }
         }
 
-        return true;
+        DumpSeq(newNext);
+        return newNext.Execute(parser);
     }
 
-    private bool ExecuteSequence(Parser parser, Branch[] branches)
+    static void DumpSeq(GrammarNode node)
     {
-        var newNext = next;
-        for(var i = branches.Length - 1; i >= 0; i--)
-        {
-            branches[i].next = newNext;
-            newNext = branches[i];
-        }
+        if (node == null)
+            return;
 
-        var b = newNext;
-        var s = $"ExecuteSequence: {b.ToString()}";
-        while (b.next != null)
+        var s = $"ExecuteSequence: {node.name}";
+        while (node.mNext != null)
         {
-            b = b.next;
-            s = s + $" -> {b.ToString()}";
+            node = node.mNext;
+            s = s + $" -> {node.name}";
         }
         Debug.Log(s);
-
-        return newNext.Execute(parser);
     }
 }
 
-public class SingleToken : Branch
+public class SingleToken : GrammarNode
 {
     Token.Type type;
+
+    public override string name => $"{GetType().Name}[{type}]";
+
     public SingleToken(Token.Type t)
     {
         type = t;
@@ -77,14 +86,9 @@ public class SingleToken : Branch
     {
         return parser.Consume(type);
     }
-
-    public override string ToString()
-    {
-        return $"Shadertoy4U.SingleToken({type})";
-    }
 }
 
-public class TypeToken : Branch
+public class TypeToken : GrammarNode
 {
     static readonly Token.Type[] types = new Token.Type[]
     {
@@ -218,7 +222,7 @@ public class TypeToken : Branch
     }
 }
 
-public class StorageToken : Branch
+public class StorageToken : GrammarNode
 {
     static readonly Token.Type[] types = new Token.Type[]
     {
@@ -254,13 +258,13 @@ public class StorageToken : Branch
 function_prototype :
     function_declarator RIGHT_PAREN
 */
-public class function_prototype : Branch
+public class function_prototype : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new function_declarator(),
                 new SingleToken(Token.Type.RIGHT_PAREN),
@@ -274,17 +278,17 @@ function_declarator :
     function_header
     function_header_with_parameters
 */
-public class function_declarator : Branch
+public class function_declarator : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new function_header(),
             },
-            new Branch[]
+            new GrammarNode[]
             {
                 new function_header_with_parameters(),
             },
@@ -296,13 +300,13 @@ public class function_declarator : Branch
 function_header :
     fully_specified_type IDENTIFIER LEFT_PAREN
 */
-public class function_header : Branch
+public class function_header : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new fully_specified_type(),
                 new SingleToken(Token.Type.IDENTIFIER),
@@ -317,13 +321,13 @@ fully_specified_type :
     type_specifier
     type_qualifier type_specifier
 */
-public class fully_specified_type : Branch
+public class fully_specified_type : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new type_specifier(),
             },
@@ -336,13 +340,13 @@ type_specifier :
     type_specifier_nonarray
     type_specifier_nonarray array_specifier
 */
-public class type_specifier : Branch
+public class type_specifier : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new type_specifier_nonarray(),
             },
@@ -356,13 +360,13 @@ type_specifier_nonarray :
     struct_specifier 
     TYPE_NAME
 */
-public class type_specifier_nonarray : Branch
+public class type_specifier_nonarray : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new TypeToken(),
             },
@@ -375,18 +379,18 @@ function_header_with_parameters :
     function_header parameter_declaration
     function_header_with_parameters COMMA parameter_declaration
 */
-public class function_header_with_parameters : Branch
+public class function_header_with_parameters : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new function_header(),
                 new parameter_declaration(),
             },
-            new Branch[]
+            new GrammarNode[]
             {
                 new function_header_with_parameters(),
                 new SingleToken(Token.Type.COMMA),
@@ -403,13 +407,13 @@ parameter_declaration :
     type_qualifier parameter_type_specifier
     parameter_type_specifier
 */
-public class parameter_declaration : Branch
+public class parameter_declaration : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new type_qualifier(),
                 new parameter_declarator(),
@@ -423,17 +427,17 @@ type_qualifier :
     single_type_qualifier
     type_qualifier single_type_qualifier
 */
-public class type_qualifier : Branch
+public class type_qualifier : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new single_type_qualifier(),
             },
-            new Branch[]
+            new GrammarNode[]
             {
                 new type_qualifier(),
                 new single_type_qualifier(),
@@ -451,13 +455,13 @@ single_type_qualifier :
     invariant_qualifier
     precise_qualifier
 */
-public class single_type_qualifier : Branch
+public class single_type_qualifier : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new storage_qualifier(),
             },
@@ -485,13 +489,13 @@ storage_qualifier :
     SUBROUTINE
     SUBROUTINE LEFT_PAREN type_name_list RIGHT_PAREN
 */
-public class storage_qualifier : Branch
+public class storage_qualifier : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new StorageToken(),
             },
@@ -505,13 +509,13 @@ parameter_declarator :
     type_specifier IDENTIFIER
     type_specifier IDENTIFIER array_specifier
 */
-public class parameter_declarator : Branch
+public class parameter_declarator : GrammarNode
 {
-    protected override Branch[][] GenerateSubsequence()
+    protected override GrammarNode[][] GenerateSubsequence()
     {
-        return new Branch[][]
+        return new GrammarNode[][]
         {
-            new Branch[]
+            new GrammarNode[]
             {
                 new type_specifier(),
                 new SingleToken(Token.Type.IDENTIFIER),

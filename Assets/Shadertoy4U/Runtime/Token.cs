@@ -12,7 +12,7 @@ public class Token
 
     public override string ToString()
     {
-        return $"[{type}]: {str}";
+        return $"[{type}]{str}";
     }
 
     public static bool TryGetType(string str, out Type t)

@@ -5,21 +5,22 @@ namespace Shadertoy4U
 public class StringBuffer
 {
     string mStr;
-    int currentPosition;
 
     public const char eos = '\0';
+
+    public int pos { get; set; }
 
     public StringBuffer(string str)
     {
         mStr = str;
-        currentPosition = 0;
+        pos = 0;
     }
 
     public char Next()
     {
-        if (currentPosition < mStr.Length)
+        if (pos < mStr.Length)
         {
-            return mStr[currentPosition++];
+            return mStr[pos++];
         }
         return eos;
     }
