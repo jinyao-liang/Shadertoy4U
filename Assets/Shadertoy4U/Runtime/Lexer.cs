@@ -48,6 +48,13 @@ public class Lexer
         mInput.pos = s.p;
     }
 
+    public bool IsSameState(State s)
+    {
+        return currentToken == s.t && 
+            currentChar == s.c && 
+            mInput.pos == s.p;
+    }
+
     public void NextToken()
     {
         lastLine = lineNumber;

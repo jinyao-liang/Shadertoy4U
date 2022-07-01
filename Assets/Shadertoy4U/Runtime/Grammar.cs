@@ -1,14 +1,39 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Shadertoy4U
 {
 
+public class HistoryGuard : IDisposable
+{
+    List<GrammarNode> history;
+
+    public HistoryGuard(List<GrammarNode> h, GrammarNode n)
+    {
+        history = h;
+        history.Add(n);
+    }
+
+    public void Dispose()
+    {
+        history.RemoveAt(history.Count - 1);
+    }
+}
+
 public abstract class GrammarNode
 {
+    GrammarNode mParent;
+    List<GrammarNode> mChildren = new List<GrammarNode>();
+
     GrammarNode mNext;
 
-    public virtual string name => GetType().Name;
+    Parser.State mState;
+    bool mDirty;
+
+    static List<GrammarNode> sHistory = new List<GrammarNode>();
+
+    public virtual string name => $"{GetType().Name}({mDirty})";
 
     protected virtual bool ExecuteSelf(Parser parser) => true;
     protected virtual GrammarNode[][] GenerateSubsequence() => null;
@@ -16,58 +41,130 @@ public abstract class GrammarNode
     public static int depth = 0;
     public bool Execute(Parser parser)
     {
-        Debug.Log($"[{depth}]Executing {name}, current token: {parser.token.ToString()}");
-        if (depth-- <= 0)
+        if (mParent != null &&
+            mParent.GetType() == GetType() && 
+            parser.IsSameState(mParent.mState) &&
+            !mParent.mDirty)
+        {
+            Debug.LogWarning($"deadloop found!");
             return false;
+        }
 
-        if (!ExecuteSelf(parser))
-            return false;
+        DumpSeq();
+        using (new HistoryGuard(sHistory, this))
+        {
+            //Debug.Log($"[{depth}]Executing {name}, current token: {parser.token.ToString()}");
+            if (depth-- <= 0)
+            {
+                Debug.LogWarning($"max depth exceed!");
+                return false;
+            }
 
+            return ExecuteSelf(parser) &&
+                    ExecuteChildren(parser);
+        }
+    }
+
+    private bool ExecuteChildren(Parser parser)
+    {
         var seqs = GenerateSubsequence();
         if (seqs == null)
-            return ExecuteSequence(parser, null);
+            return ExecuteNext(parser);
 
-        var state = parser.Backup();
+        mState = parser.Backup();
         for (var i = 0; i < seqs.Length; i++)
         {
             if (i > 0)
-                parser.Restore(state);
+                parser.Restore(mState);
 
-            if (ExecuteSequence(parser, seqs[i]))
+            var seq = seqs[i];
+            for(int n = 0; n < seq.Length; n++)
+            {
+                seq[n].mParent = this;
+                if (n+1 < seq.Length)
+                    seq[n].mNext = seq[n+1];
+            }
+
+            if (seq[0].Execute(parser) && 
+                    ExecuteNext(parser))
                 return true;
         }
 
         return false;
     }
 
-    private bool ExecuteSequence(Parser parser, GrammarNode[] branches)
+    private bool ExecuteNext(Parser parser)
     {
-        var newNext = mNext;
-        if (branches != null)
-        {
-            for(var i = branches.Length - 1; i >= 0; i--)
-            {
-                branches[i].mNext = newNext;
-                newNext = branches[i];
-            }
-        }
+        if (mNext == null)
+            return true;
 
-        DumpSeq(newNext);
-        return newNext.Execute(parser);
+        return mNext.Execute(parser);
     }
 
-    static void DumpSeq(GrammarNode node)
+    void DumpSeq()
     {
-        if (node == null)
-            return;
-
-        var s = $"ExecuteSequence: {node.name}";
-        while (node.mNext != null)
+        var first = true;
+        string s = $"ExecuteSequence: [[[";
+        foreach(var n in sHistory)
         {
-            node = node.mNext;
-            s = s + $" -> {node.name}";
+            if (first)
+            {
+                first = false;
+                s += $"{n.name}";
+            }
+            else
+            {
+                s += $" -> {n.name}";
+            }
         }
+        s += $"]]]     ";
+
+        DumpNode(this, ref s);
+
+
+        s += $"     ===";
+
+        var node = mParent;
+        while (node != null)
+        {
+            DumpNode(node.mNext, ref s);
+            node = node.mParent;
+        }
+        s += $"===";
+
         Debug.Log(s);
+    }
+
+    void DumpNode(GrammarNode node, ref string str)
+    {
+        while (node != null)
+        {
+            str +=$" -> {node.name}";
+            node = node.mNext;
+        }
+    }
+
+    protected bool Consume(Parser parser, Token.Type t)
+    {
+        var last = parser.token;
+        var r = parser.Consume(t);
+        if (r)
+        {
+            Debug.Log($"token {last.ToString()} consume by {name}");
+            MarkDirty();
+        }
+
+        return r;
+    }
+
+    void MarkDirty()
+    {
+        var p = this;
+        while (p != null)
+        {
+            p.mDirty = true;
+            p = p.mParent;
+        }
     }
 }
 
@@ -84,7 +181,7 @@ public class SingleToken : GrammarNode
 
     protected override bool ExecuteSelf(Parser parser)
     {
-        return parser.Consume(type);
+        return Consume(parser, type);
     }
 }
 
@@ -217,7 +314,8 @@ public class TypeToken : GrammarNode
     {
         var t = parser.token.type;
         if (Array.IndexOf(types, t) >= 0)
-            return parser.Consume(t);
+            return Consume(parser, t);
+        Debug.LogWarning($"expect 'Type', got {parser.token.ToString()}");
         return false;
     }
 }
@@ -248,7 +346,8 @@ public class StorageToken : GrammarNode
     {
         var t = parser.token.type;
         if (Array.IndexOf(types, t) >= 0)
-            return parser.Consume(t);
+            return Consume(parser, t);
+        Debug.LogWarning($"expect 'Storage', got {parser.token.ToString()}");
         return false;
     }
 }
@@ -416,6 +515,10 @@ public class parameter_declaration : GrammarNode
             new GrammarNode[]
             {
                 new type_qualifier(),
+                new parameter_declarator(),
+            },
+            new GrammarNode[]
+            {
                 new parameter_declarator(),
             },
         };

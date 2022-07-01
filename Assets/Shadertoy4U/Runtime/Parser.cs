@@ -25,12 +25,9 @@ public class Parser
 
     public void Parse()
     {
-        GrammarNode.depth = 32;
-        var branch = new function_prototype();
-        if (!branch.Execute(this))
-        {
-            // Debug.LogError(mLastError);
-        }
+        GrammarNode.depth = 1024;
+        var root = new function_prototype();
+        root.Execute(this);
     }
 
     public bool Consume(Token.Type t)
@@ -54,8 +51,14 @@ public class Parser
 
     public void Restore(State s)
     {
-        Debug.LogWarning($"Restore");
         mLexer.Restore(s.lexState);
+    }
+
+    public bool IsSameState(State s)
+    {
+        if (s == null)
+            return false;
+        return mLexer.IsSameState(s.lexState);
     }
 
     public void LogError(string str)
