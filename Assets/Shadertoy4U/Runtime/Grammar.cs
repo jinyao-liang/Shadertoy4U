@@ -95,10 +95,15 @@ public abstract class GrammarNode
 
     private bool ExecuteNext(Parser parser)
     {
-        if (mNext == null)
-            return true;
+        var node = this;
+        while (node != null)
+        {
+            if (node.mNext != null)
+                return node.mNext.Execute(parser);
+            node = node.mParent;
+        }
 
-        return mNext.Execute(parser);
+        return true;
     }
 
     void DumpSeq()
@@ -517,10 +522,6 @@ public class parameter_declaration : GrammarNode
                 new type_qualifier(),
                 new parameter_declarator(),
             },
-            new GrammarNode[]
-            {
-                new parameter_declarator(),
-            },
         };
     }
 }
@@ -538,11 +539,6 @@ public class type_qualifier : GrammarNode
         {
             new GrammarNode[]
             {
-                new single_type_qualifier(),
-            },
-            new GrammarNode[]
-            {
-                new type_qualifier(),
                 new single_type_qualifier(),
             },
         };
