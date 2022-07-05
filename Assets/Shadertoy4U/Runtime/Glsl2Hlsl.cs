@@ -9,9 +9,9 @@ public static class Glsl2Hlsl
 {
     public static string Convert(string glsl)
     {
-        var buf = new StringBuffer(glsl);
-        var lexer = new Lexer(buf);
-        lexer.NextToken();
+        // var buf = new StringBuffer(glsl);
+        // var lexer = new Lexer(buf);
+        // lexer.NextToken();
 
         // while(true)
         // {
@@ -22,9 +22,13 @@ public static class Glsl2Hlsl
         // }
         // Debug.Log($"done.");
 
-        Parser parser = new Parser(lexer);
-        parser.Parse();
-        Debug.Log($"done.");
+        // Parser parser = new Parser(lexer);
+        // parser.Parse();
+
+
+        var parser = new Glsl.Parser(new Glsl.Lexer(new StringBuffer(glsl)));
+        var ret = parser.Run();
+        Debug.Log($"done. {ret}");
 
         return glsl;
     }

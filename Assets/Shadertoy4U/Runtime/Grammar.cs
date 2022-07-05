@@ -24,7 +24,7 @@ public class HistoryGuard : IDisposable
 public abstract class GrammarNode
 {
     GrammarNode mParent;
-    List<GrammarNode> mChildren = new List<GrammarNode>();
+    GrammarNode[] mChildren;
 
     GrammarNode mNext;
 
@@ -69,7 +69,7 @@ public abstract class GrammarNode
     {
         var seqs = GenerateSubsequence();
         if (seqs == null)
-            return ExecuteNext(parser);
+            return true;
 
         mState = parser.Backup();
         for (var i = 0; i < seqs.Length; i++)
