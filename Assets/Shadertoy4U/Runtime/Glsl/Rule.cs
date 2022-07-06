@@ -7,13 +7,17 @@ namespace Shadertoy4U.Glsl
 
 public abstract class Rule
 {
+    Rule mParent;
+    Rule mChild;
     Rule mNext;
+
+    public static Parser parser;
 
     public static int depth = 0;
 
     public virtual string name => $"{GetType().Name}";
 
-    public bool Process(Parser parser)
+    public bool Process()
     {            
         if (depth-- <= 0)
         {
@@ -21,33 +25,28 @@ public abstract class Rule
             return false;
         }
 
-        DebugDump();
+        DebugDump(this, 0);
 
-        return ProcessSelf(parser) &&
-                ProcessBranches(parser);
+        return ProcessSelf() &&
+                ProcessBranches();
     }
 
-    void DebugDump()
+    public static void DebugDump(Rule node, int level)
     {
-        string s = $"ExecuteSequence: ";
-        DumpNode(this, ref s);
-        Debug.Log(s);
-    } 
-    
-    void DumpNode(Rule node, ref string str)
-    {
+        string str = $"ExecuteSequence: ";
         while (node != null)
         {
             str +=$" -> {node.name}";
             node = node.mNext;
         }
-    }
+        Debug.Log(str);
+    } 
 
-    bool ProcessBranches(Parser parser)
+    bool ProcessBranches()
     {
         var branches = CreateBranches();
         if (branches == null)
-            return ProcessNext(parser);
+            return ProcessNext();
 
         var state = parser.Save();
         for (var i = 0; i < branches.Length; i++)
@@ -59,21 +58,23 @@ public abstract class Rule
             var branch = branches[i];
             for(var n = branch.Length - 1; n >= 0; n--)
             {
+                branch[n].mParent = this;
                 branch[n].mNext = next;
                 next = branch[n];
             }
 
-            if (branch[0].Process(parser))
+            mChild = branch[0];
+            if (mChild.Process())
                 return true;
         }
 
         return false;
     }
 
-    bool ProcessNext(Parser parser)
+    bool ProcessNext()
     {
         if (mNext != null)
-            return (mNext.Process(parser));
+            return (mNext.Process());
         return true;
     }
 
@@ -97,7 +98,7 @@ public abstract class Rule
         return r?.Clone();
     }
 
-    protected bool Consume(Parser parser, Token.Type t)
+    protected bool Consume(Token.Type t)
     {
         var last = parser.token;
         var r = parser.Consume(t);
@@ -109,7 +110,7 @@ public abstract class Rule
         return r;
     }
 
-    protected virtual bool ProcessSelf(Parser parser) => true;
+    protected virtual bool ProcessSelf() => true;
     protected virtual Rule[][] CreateBranches() => null;
     protected virtual Rule Clone() => (Rule)Activator.CreateInstance(GetType());
 }

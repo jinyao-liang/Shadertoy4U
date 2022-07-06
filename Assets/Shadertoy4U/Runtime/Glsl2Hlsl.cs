@@ -25,10 +25,17 @@ public static class Glsl2Hlsl
         // Parser parser = new Parser(lexer);
         // parser.Parse();
 
-
-        var parser = new Glsl.Parser(new Glsl.Lexer(new StringBuffer(glsl)));
-        var ret = parser.Run();
-        Debug.Log($"done. {ret}");
+        var parser = new Glsl.Parser(glsl);
+        if (parser.Run())
+        {
+            var translator = new HlslGenerator();
+            translator.Run(new SyntaxTree(parser.tree));
+            Debug.Log($"done.");
+        }
+        else
+        {
+            Debug.LogWarning("parse failed");
+        }
 
         return glsl;
     }

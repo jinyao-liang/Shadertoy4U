@@ -281,7 +281,7 @@ public class SingleToken : Rule
         type = t;
     }
 
-    protected override bool ProcessSelf(Parser parser) => Consume(parser, type);
+    protected override bool ProcessSelf() => Consume(type);
 
     protected override Rule Clone() => new SingleToken(type);
 }
@@ -411,11 +411,11 @@ public class TypeToken : Rule
         Token.Type.UIMAGE2DMSARRAY,
     };
 
-    protected override bool ProcessSelf(Parser parser)
+    protected override bool ProcessSelf()
     {
         var t = parser.token.type;
         if (Array.IndexOf(types, t) >= 0)
-            return Consume(parser, t);
+            return Consume(t);
         Debug.LogWarning($"expect 'Type', got {parser.token.ToString()}");
         return false;
     }
@@ -443,11 +443,11 @@ public class StorageToken : Rule
         Token.Type.SUBROUTINE,
     };
 
-    protected override bool ProcessSelf(Parser parser)
+    protected override bool ProcessSelf()
     {
         var t = parser.token.type;
         if (Array.IndexOf(types, t) >= 0)
-            return Consume(parser, t);
+            return Consume(t);
         Debug.LogWarning($"expect 'Storage', got {parser.token.ToString()}");
         return false;
     }

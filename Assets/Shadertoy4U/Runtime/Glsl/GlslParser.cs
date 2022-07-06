@@ -8,21 +8,22 @@ public class Parser
 {
     Lexer mLexer;
 
+    public ParseTree tree { get; set; }
+
     public Token token { get => mLexer.token; }
 
-    public Parser(Lexer lexer)
+    public Parser(string source)
     {
-        mLexer = lexer;
+        mLexer = new Glsl.Lexer(new StringBuffer(source));
+        mLexer.NextToken();
     }
 
     public bool Run()
     {
-        if (mLexer.token == null)
-            mLexer.NextToken();
-
         Rule.depth = 1024;
+        Rule.parser = this;
         var root = new function_prototype();
-        return root.Process(this);
+        return root.Process();
     }
 
     public Lexer.State Save()
